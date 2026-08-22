@@ -9,7 +9,7 @@ services:
     environment:
       - SARVAM_API_KEY=${SARVAM_API_KEY}
       - SARVAM_STT_ENDPOINT=https://api.sarvam.ai/speech-to-text
-      - SARVAM_STT_MODEL=saaras:v2
+      - SARVAM_STT_MODEL=saaras:v3
       - MAX_AUDIO_SIZE_BYTES=26214400
       - MAX_AUDIO_DURATION_SEC=60.0
       - STT_TIMEOUT_SEC=5.0

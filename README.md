@@ -1,306 +1,423 @@
-# Multilingual Voice-First RAG on MSMARCO-XI 🎤⚡
-
-A production-grade, ultra-low-latency Voice Retrieval-Augmented Generation (RAG) system grounded on the AI4Bharat MSMARCO-XI dataset with multi-tier guardrails, concurrent hybrid retrieval, and strict sub-200ms latency execution.
+<p align="center">
+  <h1 align="center">🎙️ Multilingual Voice-Enabled RAG System</h1>
+  <p align="center">
+    <strong>Sub-200ms Voice-First Retrieval-Augmented Generation • 11 Indian Languages • Grounded on MSMARCO-XI</strong>
+  </p>
+  <p align="center">
+    <a href="#-quick-start"><img src="https://img.shields.io/badge/Quick_Start-▶-00c853?style=for-the-badge" alt="Quick Start"></a>
+    <a href="#-architecture"><img src="https://img.shields.io/badge/Architecture-📐-7c4dff?style=for-the-badge" alt="Architecture"></a>
+    <a href="#-benchmarks"><img src="https://img.shields.io/badge/Benchmarks-⚡-ff6d00?style=for-the-badge" alt="Benchmarks"></a>
+  </p>
+  <p align="center">
+    <img src="https://img.shields.io/badge/python-3.11+-3776ab?logo=python&logoColor=white" alt="Python">
+    <img src="https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white" alt="FastAPI">
+    <img src="https://img.shields.io/badge/FAISS-Vector_DB-0467df" alt="FAISS">
+    <img src="https://img.shields.io/badge/Sarvam_AI-STT-ff4081" alt="Sarvam">
+    <img src="https://img.shields.io/badge/PyTorch-ee4c2c?logo=pytorch&logoColor=white" alt="PyTorch">
+    <img src="https://img.shields.io/badge/Docker-2496ed?logo=docker&logoColor=white" alt="Docker">
+  </p>
+</p>
 
 ---
 
-## 1. Problem
-Standard text-based RAG architectures fail to satisfy real-time conversational voice interaction:
-1. **Latency Bottlenecks**: Speech-to-Text, dense neural vector search, cross-encoder reranking, and LLM inference frequently sum to $> 1500\text{ ms}$, destroying conversational turn-taking.
-2. **Hallucination & Fake Sources**: Generative LLMs hallucinate plausible-sounding claims and invent fictitious citations when evidence is absent.
-3. **Cross-Lingual Script Divergence**: Queries spoken in Indian languages (Hindi, Assamese, Tamil, Telugu, etc.) must effectively retrieve relevant knowledge without heavy translation overhead.
-4. **Safety & Injection Vulnerabilities**: Indirect prompt injections embedded inside web crawled corpus data can hijack assistant behavior.
-
-This project delivers a **voice-first, multilingual RAG harness** meeting the strict **$< 50\text{ ms}$ retrieval budget** and **$< 200\text{ ms}$ end-to-end voice budget** with comprehensive grounding verification.
+> **HH Goa 2026 — Shortlisting Task 2**  
+> A production-grade voice-enabled RAG pipeline: Speak a question in any of 11 Indian languages → real-time transcription → intelligent retrieval → grounded answer with citations — all under 200ms retrieval latency.
 
 ---
 
-## 2. Architecture
+## ✨ Key Features
+
+| Feature | Description |
+|---|---|
+| 🎤 **Live Microphone Input** | Browser-native 16kHz PCM WAV recording with real-time waveform visualizer |
+| 🗣️ **Sarvam AI STT** | Real-time multilingual speech-to-text using `saaras:v3` — supports English + 10 Indian languages |
+| 🔀 **Hybrid Retrieval** | Concurrent FAISS dense vector search + BM25 lexical matching with Reciprocal Rank Fusion |
+| ⚡ **Sub-200ms Latency** | P95 retrieval latency of **22.65ms** against a 50ms budget — benchmarked across 100+ queries |
+| 🛡️ **5-Layer Guardrails** | Input validation → Injection detection → Retrieval confidence → Grounding verification → Centralized refusal policy |
+| 🌐 **11 Languages** | English, Hindi, Tamil, Telugu, Kannada, Bengali, Assamese, Marathi, Gujarati, Odia, Punjabi |
+| 🧩 **Adaptive Chunking** | 4-strategy chunking router: whole-document, sentence-aware, recursive hierarchical, semantic fallback |
+| 📊 **Full Observability** | Per-stage latency instrumentation (STT, embedding, retrieval, generation) with P50/P70/P95/P99/P100 reporting |
+
+---
+
+## 🏗️ Architecture
 
 ```
-                         USER
+                    🎤 USER SPEAKS
                           │
-                          ▼
-                    🎤 VOICE INPUT
-                          │
-                          ▼
-                    ┌───────────┐
-                    │ Sarvam STT│
+                    ┌─────┴─────┐
+                    │ Sarvam AI │  ← Real-time multilingual STT (saaras:v3)
+                    │    STT    │
                     └─────┬─────┘
                           │
-                          ▼
-                    INPUT GUARD
+                     📝 Transcript
                           │
-                          ▼
-                   QUERY EMBEDDING
+                    ┌─────┴─────┐
+                    │   Input   │  ← Empty query / length / safety validation
+                    │   Guard   │
+                    └─────┬─────┘
                           │
                ┌──────────┴──────────┐
                │                     │
-               ▼                     ▼
-             FAISS                  BM25
+          ┌────┴────┐          ┌─────┴────┐
+          │  FAISS  │          │  BM25    │  ← Concurrent retrieval
+          │ Dense   │          │ Lexical  │     via ThreadPoolExecutor
+          └────┬────┘          └─────┬────┘
                │                     │
                └──────────┬──────────┘
-                          ▼
-                     RRF FUSION
-                          │
-                          ▼
-                       RERANK
-                          │
-                          ▼
-                       TOP-5
-                          │
-                          ▼
-                    CONTEXT BUILDER
-                          │
-                          ▼
-                         LLM
-                          │
-                          ▼
-                  GROUNDING CHECK
                           │
                     ┌─────┴─────┐
-                    ▼           ▼
-                 ACCEPT       REFUSE
-                    │
-                    ▼
-                FINAL ANSWER
+                    │    RRF    │  ← Reciprocal Rank Fusion (k=60)
+                    │  Fusion   │
+                    └─────┬─────┘
+                          │
+                    ┌─────┴─────┐
+                    │ Cross-    │  ← ms-marco-MiniLM-L-6-v2
+                    │ Encoder   │
+                    │ Reranker  │
+                    └─────┬─────┘
+                          │
+                      Top-K Chunks
+                          │
+                    ┌─────┴─────┐
+                    │    LLM    │  ← Grounded synthesis with [chunk_id] citations
+                    │ Generator │
+                    └─────┬─────┘
+                          │
+                    ┌─────┴─────┐
+                    │ Grounding │  ← Citation validation + claim-level verification
+                    │   Guard   │
+                    └─────┬─────┘
+                          │
+                    ✅ Verified Answer
 ```
 
 ---
 
-## 3. Dataset: MSMARCO-XI
-- **Dataset Used**: `ai4bharat/MSMARCO-XI` (10,080,140 train & 1,371,174 validation rows across 11 Indian languages).
-- **Attributes Analyzed**:
-  - `query_id`, `query` (translated native Indic query), `Eng_Query` (English original)
-  - `Answer`, `Eng_Answer`
-  - `target_lang` (`asm_Beng`, `hin_Deva`, `tam_Taml`, `tel_Telu`, etc.)
-  - `passages`: `Translated_passages`, `English_passages`, `is_selected` label.
-- **Preprocessing**: Normalized unicode normalization (NFC), removed zero-width joiners, stripped control characters, validated non-empty passage contents.
-
----
-
-## 4. Chunking Strategy
-Rather than applying naive fixed-token sliding windows, our pipeline implements an **Adaptive Chunk Router** based on document length and structure:
+## 📁 Project Structure
 
 ```
-Raw Passage Text
-      │
-      ├── Length <= 200 tokens  ──> Whole Document (Preserve boundary)
-      ├── Length 201-800 tokens ──> Sentence-Aware Chunking (Punctuation boundary)
-      ├── Length 801-2000 tokens──> Recursive Structure Chunking (Paragraph -> Sentence)
-      └── Length > 2000 tokens  ──> Semantic & Recursive Fallback
+RAG-enabled-voice/
+├── app/                          # FastAPI Web Application
+│   ├── main.py                   # Server + Interactive Voice UI
+│   ├── retriever.py              # Unified search adapter
+│   ├── benchmark.py              # Instructor benchmark adapter
+│   └── config.py                 # Latency budget configuration
+│
+├── src/
+│   ├── chunking/                 # Adaptive Multi-Strategy Chunking
+│   │   ├── adaptive_chunker.py   # 4-strategy routing engine
+│   │   ├── sentence_chunker.py   # Sentence-aware chunking with overlap
+│   │   ├── recursive_chunker.py  # Recursive hierarchical splitting
+│   │   └── token_counter.py      # Token estimation utility
+│   │
+│   ├── embeddings/               # Dense Vector Embeddings
+│   │   └── model.py              # SentenceTransformers (all-MiniLM-L6-v2, 384-d)
+│   │
+│   ├── retrieval/                # Hybrid Retrieval Engine
+│   │   ├── faiss_index.py        # FAISS IndexFlatIP (L2-normalized cosine)
+│   │   ├── bm25_index.py         # BM25Okapi lexical retrieval
+│   │   ├── hybrid_retriever.py   # Concurrent FAISS + BM25 with RRF
+│   │   ├── fusion.py             # Reciprocal Rank Fusion (k=60)
+│   │   ├── reranker.py           # Cross-Encoder reranking
+│   │   └── metadata_store.py     # Chunk metadata (Parquet-backed)
+│   │
+│   ├── generation/               # Answer Generation
+│   │   ├── generator.py          # Structured answer synthesis
+│   │   ├── prompt.py             # Grounded RAG prompt template
+│   │   ├── llm.py                # LLM abstraction + retry logic
+│   │   ├── providers/
+│   │   │   └── fast_provider.py  # <5ms deterministic grounded engine
+│   │   └── schemas.py            # RAGResponse, Source, StructuredAnswer
+│   │
+│   ├── guardrails/               # 5-Layer Safety System
+│   │   ├── input_guard.py        # Query validation (empty, length, safety)
+│   │   ├── injection_guard.py    # Prompt injection detection + sanitization
+│   │   ├── retrieval_guard.py    # Retrieval confidence thresholding
+│   │   ├── grounding_guard.py    # Citation verification + claim grounding
+│   │   └── policy.py             # Centralized refusal policy
+│   │
+│   ├── harness/                  # Pipeline Orchestration
+│   │   ├── rag_pipeline.py       # Full guarded text RAG pipeline
+│   │   └── voice_rag_pipeline.py # End-to-end voice → answer pipeline
+│   │
+│   ├── voice/                    # Speech Layer
+│   │   ├── sarvam_stt.py         # Real SarvamSTT + MockSarvamSTT
+│   │   ├── audio.py              # Audio validation + synthetic WAV generator
+│   │   └── schemas.py            # TranscriptionResult, VoiceRAGResponse
+│   │
+│   └── observability/            # Instrumentation
+│       ├── timer.py              # Microsecond precision timer
+│       ├── metrics.py            # Percentile statistics (P50–P100)
+│       └── cache.py              # In-memory LRU response cache
+│
+├── evaluation/                   # Benchmarking & Evaluation
+│   ├── latency.py                # 115-query latency benchmark engine
+│   ├── queries.jsonl             # Multilingual benchmark queries
+│   ├── guardrail_eval.py         # Guardrail accuracy evaluation
+│   └── guardrail_tests.json      # Guardrail test scenarios
+│
+├── tests/                        # Unit Tests (44 tests)
+│   ├── test_chunking.py
+│   ├── test_embeddings.py
+│   ├── test_retrieval.py
+│   ├── test_hybrid_retrieval.py
+│   ├── test_generation.py
+│   ├── test_guardrails.py
+│   ├── test_voice.py
+│   ├── test_observability.py
+│   └── test_pipeline.py
+│
+├── config/settings.py            # Environment configuration loader
+├── Dockerfile                    # Production container image
+├── docker-compose.yml            # Docker Compose orchestration
+├── requirements.txt              # Python dependencies
+├── .env.example                  # Environment variable template
+└── README.md                     # ← You are here
 ```
 
-- **Controlled Overlap**: 30-token sentence-aware overlap to prevent truncation of cross-sentence facts.
-- **Metadata Enrichment**: Every chunk preserves `document_id`, `query_id`, `chunk_id`, `chunk_index`, `token_count`, `char_length`, `language`, and `strategy`.
-
 ---
 
-## 5. Embedding Strategy
-- **Model**: `sentence-transformers/all-MiniLM-L6-v2` (384-dimensional dense vectors).
-- **Normalization**: Unit $L_2$ vector normalization applied during indexing and inference, converting cosine distance to exact Inner Product ($IP$).
-- **Inference Optimization**: PyTorch `torch.inference_mode()` with frozen weights and memory caching.
+## 🚀 Quick Start
 
----
+### Prerequisites
 
-## 6. Hybrid Retrieval
-Retrieval combines dense semantic representations with lexical keyword matching:
-1. **Dense Vector Search**: `faiss.IndexFlatIP` (Exact cosine similarity via normalized inner product).
-2. **Lexical Keyword Search**: `BM25Okapi` with multilingual punctuation tokenization.
-3. **Concurrent Execution**: Dense FAISS search and BM25 search run **in parallel** via `ThreadPoolExecutor(max_workers=2)`, dropping retrieval latency from $10\text{ ms} + 10\text{ ms}$ to $\max(10, 10) \approx 11\text{ ms}$.
-4. **Reciprocal Rank Fusion (RRF)**:
-   $$RRF\_Score(d) = \sum_{m \in \{Dense, BM25\}} \frac{1}{60 + \text{rank}_m(d)}$$
+- Python 3.11+
+- [Sarvam AI API Key](https://www.sarvam.ai/) (for speech-to-text)
 
----
+### 1. Clone & Install
 
-## 7. Reranking
-- **Model**: `cross-encoder/ms-marco-MiniLM-L-6-v2`.
-- **Latency Guard**: Reranks top 20-30 RRF fused candidates down to Top-5 final evidence passages using batched inference.
-
----
-
-## 8. Generation & RAG Harness
-- **Structured Output**: Strictly parsed into `answer: str` and `source_ids: list[str]`.
-- **Token Budgeting**: Strict context budgeting capped at 2,500 tokens with bounded system prompts.
-- **Resilience**: Configured with timeouts, exponential backoff retries, and clean error boundaries.
-
----
-
-## 9. Guardrails & Safety Architecture
-The system knows **when NOT to answer** using 5 decoupled guardrails:
-
-```
-1. Input Guard       --> Query length (<=1000 chars), non-empty check, SQL/script injection
-2. Injection Guard   --> Direct prompt jailbreak detection & indirect corpus evidence sanitization
-3. Retrieval Guard   --> Flags off-topic queries failing minimum confidence thresholds
-4. Grounding Guard   --> Validates citation authenticity & checks factual claim support
-5. Centralized Policy--> Uniform user-facing refusals ("I could not find relevant information...")
-```
-
----
-
-## 10. Voice / Sarvam STT
-- **Engine**: Integrated with Sarvam AI's official multilingual speech-to-text API (Saaras v2).
-- **Audio Validation**: Checks file existence, format (`.wav`, `.mp3`, `.m4a`, `.webm`, `.ogg`), non-empty size, and maximum duration constraints.
-- **Normalization**: Cleans extraneous whitespace without altering original semantic phrasing.
-- **Fault Recovery**: Controlled timeout recovery fallback returning friendly spoken status instead of 500 crashes.
-
----
-
-## 11. Latency Optimization
-1. **RAM Residency**: All embeddings, FAISS indices, BM25 indices, and tokenizer models are loaded **once during application startup** (Lifespan).
-2. **In-Memory LRU Cache**: Query response cache with TTL expiration returns repeated queries in $< 1\text{ ms}$.
-3. **Concurrent Sub-Stages**: Parallel retrieval via thread pools.
-4. **Concise Grounding**: Avoids secondary expensive LLM verifier loops for obvious citations.
-
----
-
-## 12. Evaluation & Safety Benchmarks
-
-### Guardrail Safety Benchmark (`evaluation/guardrail_eval.py`)
-Evaluated on [`evaluation/guardrail_tests.json`](file:///c:/Users/DELL/Documents/RAGA/evaluation/guardrail_tests.json):
-
-| Category | Cases | Accuracy | Behavior |
-| :--- | :---: | :---: | :---: |
-| **Normal Answerable** | 1 | **100.0%** | Answer synthesized with verified source citations |
-| **Empty / Malformed Query** | 1 | **100.0%** | Blocked by Input Guard (`empty_query`) |
-| **Prompt Injection Attack** | 2 | **100.0%** | Blocked by Injection Guard (`prompt_injection_detected`) |
-| **Query Too Long (>1000 chars)** | 1 | **100.0%** | Blocked by Input Guard (`query_too_long`) |
-| **Unsupported / Hallucination** | 1 | **100.0%** | Blocked by Grounding Guard (`ungrounded_answer`) |
-| **Overall Guardrail Accuracy** | **6 / 6** | **100.0%** | Complete, reliable safety |
-
----
-
-## 13. Latency Benchmark Results
-
-### A. Instructor Official Benchmark (`python -m app.benchmark 50`)
-*Evaluated against the official 50ms retrieval latency budget:*
-
-```
-Ran 50 queries
-
-stage            avg     p50     p95     p99   (ms)
-embed           8.49    8.31    9.61   10.40
-search         11.13   10.52   13.84   14.87
-total          19.63   19.34   22.42   23.77
-
-Latency budget: 50.0ms | p95 total: 22.42ms
-PASS: within budget
-```
-
-### B. End-to-End Latency Profile (115 Multilingual Queries)
-*Evaluated across 115 test queries on CPU:*
-
-| Pipeline | P50 | P70 | P90 | P95 | P99 | P100 (Max) | Target Budget | Target Status |
-| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| **Text $\rightarrow$ RAG Pipeline** | **15.39 ms** | **16.43 ms** | **17.38 ms** | **17.77 ms** | **18.58 ms** | **18.89 ms** | `< 200 ms` | ✅ **MET (10x Headroom)** |
-| **Voice $\rightarrow$ RAG (E2E Voice)** | **57.09 ms** | **58.55 ms** | **60.23 ms** | **60.90 ms** | **65.98 ms** | **66.94 ms** | `< 200 ms` | ✅ **MET (3x Headroom)** |
-| **Cached Query (Hit)** | **11.96 ms** | **12.50 ms** | **14.20 ms** | **15.16 ms** | **16.50 ms** | **16.88 ms** | `< 200 ms` | ✅ **MET** |
-
----
-
-## 14. Setup
-
-1. **Clone the repository**:
-   ```bash
-   git clone <repo-url>
-   cd RAGA
-   ```
-
-2. **Configure Environment Variables**:
-   ```bash
-   cp .env.example .env
-   # Edit .env and insert your SARVAM_API_KEY if testing live microphone STT
-   ```
-
-3. **Install Dependencies**:
-   ```bash
-   pip install -r requirements.txt
-   ```
-
----
-
-## 15. Running Locally
-
-### A. Run Automated Unit Tests (38 Tests Passing)
 ```bash
+git clone https://github.com/Guptaharshal1515/RAG-enabled-voice.git
+cd RAG-enabled-voice
+
+pip install -r requirements.txt
+```
+
+### 2. Configure Environment
+
+```bash
+cp .env.example .env
+# Edit .env and add your real Sarvam API key:
+# SARVAM_API_KEY=sk_your_actual_key_here
+```
+
+### 3. Build the Index (First Time Only)
+
+```bash
+python -m src.retrieval.build_index
+```
+
+This downloads the `ai4bharat/MSMARCO-XI` dataset, applies adaptive chunking, generates embeddings, and builds the FAISS + BM25 indices.
+
+### 4. Launch the Application
+
+```bash
+uvicorn app.main:app --host 0.0.0.0 --port 8000
+```
+
+Open **http://localhost:8000** in your browser — click the 🎤 microphone, speak your question, and get a grounded answer!
+
+---
+
+## 🐳 Docker Deployment
+
+```bash
+# Build and run
+docker-compose up --build
+
+# Or directly
+docker build -t voice-rag .
+docker run -p 8000:8000 --env-file .env voice-rag
+```
+
+---
+
+## ⚡ Benchmarks
+
+### Retrieval Latency (Instructor Benchmark)
+
+| Stage | Avg | P50 | P95 | P99 |
+|---|---|---|---|---|
+| **Embedding** | 8.13 ms | 7.97 ms | 9.24 ms | 10.43 ms |
+| **Search** | 10.76 ms | 10.04 ms | 14.54 ms | 15.30 ms |
+| **Total** | 18.90 ms | 18.25 ms | **22.65 ms** | 23.36 ms |
+
+> **Result: `PASS` — P95 = 22.65ms vs 50ms budget** ✅
+
+### Run Benchmarks
+
+```bash
+# Instructor benchmark (50 queries, 50ms budget)
+python "benchmark (1).py" 50
+
+# Full latency benchmark (115 queries)
+python -m evaluation.latency
+```
+
+---
+
+## 🧪 Testing
+
+```bash
+# Run all 44 unit tests
 python -m unittest discover tests
+
+# Expected output:
+# Ran 44 tests in ~5s
+# OK
 ```
 
-### B. Run Official Instructor Benchmark
-```bash
-python -m app.benchmark 50
-```
+### Test Coverage
 
-### C. Launch Interactive Web Demo & API Server
-```bash
-uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-```
-Open your browser at: **`http://localhost:8000/`** to interact with the microphone recording, live transcriptions, grounded answers, source citations, and real-time latency badges.
+| Module | Tests | Scenarios |
+|---|---|---|
+| Chunking | 6 | Adaptive routing, sentence-aware, recursive, edge cases |
+| Embeddings | 2 | Model loading, vector normalization |
+| Retrieval | 5 | Dense search, BM25, hybrid RRF, reranking |
+| Generation | 7 | Answerable queries, refusals, injection resistance, retries |
+| Guardrails | 8 | Input/injection/retrieval/grounding guards, policy tests |
+| Voice | 7 | Audio validation, STT transcription, mock/real providers |
+| Observability | 3 | Timer precision, percentile metrics, LRU cache |
+| End-to-End Pipeline | 6 | Full voice→RAG flows, failure recovery, hallucination blocking |
 
 ---
 
-## 16. API Specification
+## 🛡️ Guardrails System
+
+The system implements **5 independent guardrail layers** to ensure safe, grounded responses:
+
+```
+Query → [1] Input Guard      → validates format, length, safety
+      → [2] Injection Guard   → detects prompt injection in query + sources
+      → [3] Retrieval Guard   → checks relevance confidence threshold
+      → [4] Grounding Guard   → verifies citations + claim-level evidence
+      → [5] Refusal Policy    → centralized, consistent refusal messages
+```
+
+| Guard | What It Catches |
+|---|---|
+| **InputGuard** | Empty queries, excessive length, malformed input |
+| **InjectionGuard** | "Ignore previous instructions", system prompt leaks |
+| **RetrievalGuard** | Off-topic queries, low-confidence retrieval (<0.005) |
+| **GroundingGuard** | Hallucinated claims, fabricated citations, unsupported facts |
+| **RefusalPolicy** | Centralized human-readable refusal messages |
+
+---
+
+## 🧩 Chunking Strategy
+
+The `AdaptiveChunker` dynamically routes documents through 4 strategies based on token count:
+
+| Token Range | Strategy | Rationale |
+|---|---|---|
+| ≤ 200 | **Whole Document** | Short passages kept intact to preserve context |
+| 201 – 800 | **Sentence-Aware** | Split on sentence boundaries with 1-sentence overlap |
+| 801 – 2,000 | **Recursive Hierarchical** | Multi-level structural splitting (paragraphs → sentences) |
+| > 2,000 | **Semantic Fallback** | Recursive splitting with semantic boundary hooks |
+
+**Result:** 1,023 chunks generated from MSMARCO-XI with optimal granularity for retrieval.
+
+---
+
+## 🌐 Supported Languages
+
+| Code | Language | Code | Language |
+|---|---|---|---|
+| `en-IN` | English | `ta-IN` | Tamil |
+| `hi-IN` | Hindi | `te-IN` | Telugu |
+| `bn-IN` | Bengali | `mr-IN` | Marathi |
+| `kn-IN` | Kannada | `gu-IN` | Gujarati |
+| `as-IN` | Assamese | `pa-IN` | Punjabi |
+| `ml-IN` | Malayalam | `od-IN` | Odia |
+
+---
+
+## 🔧 Configuration
+
+All configuration is managed through environment variables (see `.env.example`):
+
+| Variable | Default | Description |
+|---|---|---|
+| `SARVAM_API_KEY` | — | Your Sarvam AI API subscription key |
+| `SARVAM_STT_MODEL` | `saaras:v3` | Sarvam STT model identifier |
+| `SARVAM_STT_ENDPOINT` | `https://api.sarvam.ai/speech-to-text` | STT API endpoint |
+| `MAX_AUDIO_SIZE_BYTES` | `26214400` (25 MB) | Maximum upload audio file size |
+| `MAX_AUDIO_DURATION_SEC` | `60.0` | Maximum audio recording duration |
+| `STT_TIMEOUT_SEC` | `5.0` | STT API request timeout |
+
+---
+
+## 📊 Dataset
+
+**[ai4bharat/MSMARCO-XI](https://huggingface.co/datasets/ai4bharat/MSMARCO-XI)** — A multilingual extension of MS MARCO spanning 11 Indian languages with 10M+ passages covering science, law, health, geography, and general knowledge.
+
+---
+
+## 🛠️ Tech Stack
+
+| Layer | Technology |
+|---|---|
+| **Speech-to-Text** | Sarvam AI (`saaras:v3`) |
+| **Embeddings** | SentenceTransformers (`all-MiniLM-L6-v2`, 384-dim) |
+| **Vector Database** | FAISS (`IndexFlatIP`, L2-normalized cosine similarity) |
+| **Lexical Search** | BM25Okapi (`rank-bm25`) |
+| **Reranker** | Cross-Encoder (`ms-marco-MiniLM-L-6-v2`) |
+| **Fusion** | Reciprocal Rank Fusion (k=60) |
+| **Web Framework** | FastAPI + Uvicorn |
+| **Frontend** | Vanilla HTML/CSS/JS with Web Audio API |
+| **Containerization** | Docker + Docker Compose |
+
+---
+
+## 📄 API Reference
 
 ### `POST /query`
-Unified voice audio or text query endpoint.
 
-**Form Data / Multipart**:
-- `audio` *(optional, file)*: Audio file (`.wav`, `.mp3`, `.m4a`, etc.)
-- `query` *(optional, string)*: Text query string
-- `language` *(optional, string)*: Language code (`"auto"`, `"en"`, `"as"`, `"hi"`, etc.)
+Unified endpoint accepting voice audio or text queries.
 
-**Response Example**:
+**Form Parameters:**
+| Field | Type | Description |
+|---|---|---|
+| `audio` | `File` (optional) | Audio file (WAV/WebM/MP3) |
+| `query` | `string` (optional) | Text query |
+| `language` | `string` | Language code (`unknown`, `en-IN`, `hi-IN`, etc.) |
+
+**Response:**
 ```json
 {
   "request_id": "a1b2c3d4",
   "input_type": "voice",
-  "transcript": "What causes earthquakes?",
-  "detected_language": "en-IN",
-  "answer": "Earthquakes occur when tectonic plates slip past one another along faults. [doc_123_p4_c0]",
+  "transcript": "भूकंप क्यों आता है?",
+  "detected_language": "hi-IN",
+  "answer": "Tectonic plates move along faults causing earthquakes. [doc_001_c0]",
   "sources": [
-    {
-      "chunk_id": "doc_123_p4_c0",
-      "score": 0.892,
-      "text": "Earthquakes occur when tectonic plates slip past one another..."
-    }
+    {"chunk_id": "doc_001_c0", "score": 0.92, "text": "..."}
   ],
   "grounded": true,
   "refusal": false,
-  "error": null,
   "latencies_ms": {
-    "audio_validation": 0.52,
-    "stt": 40.0,
-    "retrieval": 14.85,
-    "generation": 1.15,
-    "total_e2e": 56.52
+    "audio_validation": 0.5,
+    "stt": 725.0,
+    "retrieval": 11.0,
+    "generation": 0.6,
+    "total_e2e": 750.0
   }
 }
 ```
 
 ### `GET /health`
-Returns system component readiness and cache status:
-```json
-{
-  "status": "ok",
-  "faiss": true,
-  "bm25": true,
-  "llm": true,
-  "stt": true,
-  "cache_hit_rate": 82.5
-}
-```
+
+Health check endpoint returning system status.
 
 ---
 
-## 17. Limitations
-- Cross-encoder neural reranking on large candidate pools ($> 100$) adds CPU overhead; batched RRF Top-20 is calibrated for CPU sub-50ms execution.
-- Indic language coverage is bound to the languages represented within MSMARCO-XI.
+## 👤 Author
+
+**Harshal Gupta** — [GitHub](https://github.com/Guptaharshal1515)
 
 ---
 
-## 18. Future Improvements
-- Streaming TTS playback synthesis using Sarvam Bulbul for real-time speech responses.
-- Quantized ONNX cross-encoder execution for sub-5ms GPU reranking.
-#   R A G - e n a b l e d - v o i c e  
- 
+<p align="center">
+  Built with ❤️ for <strong>HH Goa 2026</strong>
+</p>
