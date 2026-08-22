@@ -1,23 +1,110 @@
-# Python
+# ==========================================================
+# Environments & Secrets
+# ==========================================================
+.env
+*.env
+.env.local
+.env.*.local
+
+# ==========================================================
+# Python & Bytecode
+# ==========================================================
 __pycache__/
 *.py[cod]
 *$py.class
-*.env
-.env
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+eggs/
+parts/
+var/
+sdist/
+develop-eggs/
+.installed.cfg
+lib/
+lib64/
+
+# Virtual Environments
 .venv/
 env/
 venv/
 ENV/
+env.bak/
+venv.bak/
 
-# Data
+# ==========================================================
+# Dataset, Processed Chunks & Index Artifacts
+# ==========================================================
+# Raw and Processed Datasets
 data/raw/*
 !data/raw/.gitkeep
 data/processed/*
 !data/processed/.gitkeep
 
-# Jupyter Notebooks checkpoints
-.ipynb_checkpoints
+# Vector DB & Lexical Indexes
+data/index/*.faiss
+data/index/*.pkl
+data/index/*.pickle
+data/index/*.parquet
+!data/index/.gitkeep
 
-# IDEs
+# Temporary Uploads & Audio Recordings
+data/temp_uploads/*
+!data/temp_uploads/.gitkeep
+*.webm
+*.ogg
+*.m4a
+*.mp3
+!data/demo_audio/*.wav
+
+# General Large Binary / Data Extensions
+*.parquet
+*.feather
+*.arrow
+
+# ==========================================================
+# Testing & Coverage
+# ==========================================================
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+nosetests.xml
+coverage.xml
+*.cover
+
+# ==========================================================
+# Jupyter Notebooks & Checkpoints
+# ==========================================================
+.ipynb_checkpoints
+*/.ipynb_checkpoints/*
+
+# ==========================================================
+# Logs & Observability
+# ==========================================================
+*.log
+logs/
+*.sqlite3
+
+# ==========================================================
+# IDEs, Editors & OS Files
+# ==========================================================
+# VS Code
 .vscode/
+*.code-workspace
+
+# JetBrains (PyCharm, IntelliJ)
 .idea/
+*.iml
+
+# OS specific files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
