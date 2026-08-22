@@ -85,11 +85,12 @@ class FastGroundedProvider(LLM):
         if not best_sentences and source_blocks:
             top_chunk_id, top_lang, top_raw_text = source_blocks[0]
             clean_sents = [
-                s.strip() for s in re.split(r'(?<=[.!?।॥])\s+', top_raw_text)
-                if s.strip() and "[REDACTED_INSTRUCTION]" not in s and len(s.strip().split()) >= 3
+                s.strip() for s in re.split(r'(?<=[.!?।॥\n])\s*', top_raw_text)
+                if s.strip() and "[REDACTED_INSTRUCTION]" not in s
             ]
-            if clean_sents:
-                best_sentences.append(f"{clean_sents[0]} [{top_chunk_id.strip()}]")
+            first_sent = clean_sents[0] if clean_sents else top_raw_text.strip()
+            if first_sent:
+                best_sentences.append(f"{first_sent} [{top_chunk_id.strip()}]")
                 cited_sources.append(top_chunk_id.strip())
 
         if not best_sentences:

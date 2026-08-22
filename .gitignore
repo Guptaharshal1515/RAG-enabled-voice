@@ -37,22 +37,11 @@ venv.bak/
 # ==========================================================
 # Dataset, Processed Chunks & Index Artifacts
 # ==========================================================
-# Raw and Processed Datasets
-data/raw/*
-!data/raw/.gitkeep
-data/processed/*
-!data/processed/.gitkeep
-
-# Vector DB & Lexical Indexes
-data/index/*.faiss
-data/index/*.pkl
-data/index/*.pickle
-data/index/*.parquet
-!data/index/.gitkeep
+data/
+data/*
+data/**
 
 # Temporary Uploads & Audio Recordings
-data/temp_uploads/*
-!data/temp_uploads/.gitkeep
 *.webm
 *.ogg
 *.m4a
