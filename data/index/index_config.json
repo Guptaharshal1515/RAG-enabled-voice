@@ -1,0 +1,8 @@
+{
+  "model_name": "sentence-transformers/all-MiniLM-L6-v2",
+  "dimension": 384,
+  "total_vectors": 1023,
+  "total_bm25_docs": 1023,
+  "index_type": "Hybrid (FAISS FlatIP + BM25Okapi)",
+  "created_at": "2026-08-22 17:43:14"
+}

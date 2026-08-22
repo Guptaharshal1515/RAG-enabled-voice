@@ -1,0 +1,14 @@
+datasets
+pandas
+pyarrow
+matplotlib
+sentence-transformers
+faiss-cpu
+numpy
+torch
+rank-bm25
+fastapi
+uvicorn
+python-multipart
+pydantic
+requests

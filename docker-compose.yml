@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  voice-rag-api:
+    build: .
+    container_name: voice-rag-service
+    ports:
+      - "8000:8000"
+    environment:
+      - SARVAM_API_KEY=${SARVAM_API_KEY}
+      - SARVAM_STT_ENDPOINT=https://api.sarvam.ai/speech-to-text
+      - SARVAM_STT_MODEL=saaras:v2
+      - MAX_AUDIO_SIZE_BYTES=26214400
+      - MAX_AUDIO_DURATION_SEC=60.0
+      - STT_TIMEOUT_SEC=5.0
+    restart: unless-stopped
