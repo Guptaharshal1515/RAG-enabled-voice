@@ -415,7 +415,7 @@ Health check endpoint returning system status.
 ## 👤 Author
 
 **Harshal Gupta** — [GitHub](https://github.com/Guptaharshal1515)
-
+**Amarendra Pratap Singh** — [GitHub](https://github.com/orbaps)
 ---
 
 <p align="center">
